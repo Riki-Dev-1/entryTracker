@@ -40,6 +40,7 @@ jobs:
 
       - name: Build Docker image
         run: |
-          docker build -t ghcr.io/${{ github.repository_owner }}/entrytracker:latest .
+          docker build -t ghcr.io/riki-dev-1/entrytracker:latest .
+
 
 
