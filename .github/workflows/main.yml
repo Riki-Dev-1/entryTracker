@@ -1,14 +1,25 @@
-name: CI/CD Pipeline
+name: EntryTracker CI/CD
 
 on:
   push:
     branches:
       - main
 
+permissions:
+  contents: read
+  packages: write
+
 jobs:
-  build-and-deploy:
+  entrytracker-pipeline:
     runs-on: ubuntu-latest
 
     steps:
       - name: Checkout source code
         uses: actions/checkout@v3
+      - name: Set up Python 3.10
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: pip install -r requirements.txt
