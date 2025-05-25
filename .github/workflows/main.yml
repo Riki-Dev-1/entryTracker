@@ -48,7 +48,8 @@ jobs:
           curl --fail http://localhost:5000 || exit 1
           docker compose down
       - name: Push Docker image to GHCR
-        run: docker push ghcr.io/${{ github.repository_owner }}/entrytracker:latest
+         docker push ghcr.io/riki-dev-1/entrytracker:latest
+
 
           
 
