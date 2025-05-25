@@ -46,7 +46,7 @@ jobs:
           docker compose up -d
           sleep 10
           curl --fail http://localhost:5000 || exit 1
-          docker-compose down
+          docker compose down
 
 
 
