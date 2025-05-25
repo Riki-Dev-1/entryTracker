@@ -31,3 +31,15 @@ jobs:
       - name: Unit test with curl
         run: curl --fail http://localhost:5000 || exit 1
 
+      - name: Log in to GHCR
+        uses: docker/login-action@v3
+        with:
+          registry: ghcr.io
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - name: Build Docker image
+        run: |
+          docker build -t ghcr.io/${{ github.repository_owner }}/entrytracker:latest .
+
+
