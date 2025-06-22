@@ -1,0 +1,21 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: demo-crm
+  labels:
+    app: demo-crm
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: demo-crm
+  template:
+    metadata:
+      labels:
+        app: demo-crm
+    spec:
+      containers:
+      - name: demo-crm
+        image: pwstaging/demo-crm:latest
+        ports:
+        - containerPort: 3000
