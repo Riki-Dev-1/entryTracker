@@ -12,40 +12,53 @@ env:
 jobs:
   ci-cd-pipeline:
     runs-on: ubuntu-latest
-    
+
     steps:
     - name: Checkout code
       uses: actions/checkout@v4
-      
+
+    - name: Set up Python
+      uses: actions/setup-python@v4
+      with:
+        python-version: '3.x'
+
+    - name: Install Python dependencies
+      run: |
+        pip install -r requirements.txt
+        pip install pytest
+
+    - name: Run unit tests with pytest
+      run: pytest tests/
+
     - name: Generate image tag
       id: generate-tag
       run: |
         TAG="build-$(date +%Y%m%d)-${GITHUB_SHA:0:7}"
         echo "tag=${TAG}" >> $GITHUB_OUTPUT
         echo "Generated tag: ${TAG}"
-        
+
     - name: Log in to Container Registry
       uses: docker/login-action@v3
       with:
         registry: ${{ env.REGISTRY }}
         username: ${{ github.actor }}
         password: ${{ secrets.MY_GHCR }}
-        
+
     - name: Build and push EntryTracker image
       run: |
         TAG="${{ steps.generate-tag.outputs.tag }}"
         REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
         IMAGE_NAME="${{ env.REGISTRY }}/${REPO_OWNER_LOWER}/${{ env.IMAGE_NAME }}"
-        
+
         echo "=== CI: Retagging and Publishing EntryTracker Image ==="
-        
+
         docker pull hadassigron1/entrytracker:latest
         docker tag hadassigron1/entrytracker:latest ${IMAGE_NAME}:${TAG}
         docker tag hadassigron1/entrytracker:latest ${IMAGE_NAME}:latest
-        
+
         docker push ${IMAGE_NAME}:${TAG}
         docker push ${IMAGE_NAME}:latest
-        
+
     - name: Create kind cluster for testing
       run: |
         curl -Lo ./kind https://kind.sigs.k8s.io/dl/v0.20.0/kind-linux-amd64
@@ -54,45 +67,45 @@ jobs:
         kind create cluster --wait 300s
         kubectl cluster-info
         kubectl get nodes
-        
+
     - name: Deploy MySQL infrastructure
       run: |
         kubectl apply -f k8s/mysql-secret.yaml
         kubectl apply -f k8s/mysql-statefulset.yaml
         kubectl apply -f k8s/mysql-service.yaml
         kubectl wait --for=condition=ready pod/mysql-0 --timeout=300s
-        
+
     - name: Deploy EntryTracker application
       run: |
         TAG="${{ steps.generate-tag.outputs.tag }}"
         REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
         IMAGE="${{ env.REGISTRY }}/${REPO_OWNER_LOWER}/${{ env.IMAGE_NAME }}:${TAG}"
-        
+
         sed -i "s|IMAGE_PLACEHOLDER|${IMAGE}|g" k8s/entrytracker-deployment.yaml
-        
+
         kubectl apply -f k8s/entrytracker-configmap.yaml
         kubectl apply -f k8s/entrytracker-deployment.yaml
         kubectl apply -f k8s/entrytracker-service.yaml
-        
+
         kubectl wait --for=condition=available deployment/entrytracker --timeout=300s
         kubectl wait --for=condition=ready pod -l app=entrytracker --timeout=300s
-        
+
     - name: Verify production-ready stack
       run: |
         kubectl get all
         kubectl get secrets,configmaps
-        
+
         echo "Testing MySQL connectivity..."
         kubectl run mysql-client --image=mysql:5.7 -it --rm --restart=Never -- \
           mysql -h mysql-service -u app_user -papp_password -D entrytracker_db -e "SHOW TABLES;"
-        
+
         echo "Testing EntryTracker..."
         kubectl port-forward deployment/entrytracker 5000:5000 &
         sleep 20
         if curl -f http://localhost:5000/; then
-          echo "EntryTracker is up!"
+          echo "✅ EntryTracker is up and responding!"
         else
-          echo "EntryTracker failed."
+          echo "❌ EntryTracker failed to respond."
           exit 1
         fi
 
@@ -100,7 +113,7 @@ jobs:
       run: |
         TAG="${{ steps.generate-tag.outputs.tag }}"
         REPO_OWNER_LOWER=$(echo "${{ github.repository_owner }}" | tr '[:upper:]' '[:lower:]')
-        
+
         echo ""
         echo "=== Manual Deployment Instructions (Killercoda) ==="
         echo "1. Clone your repo:"
@@ -114,7 +127,6 @@ jobs:
         echo "   kubectl apply -f k8s/mysql-service.yaml"
         echo "   kubectl wait --for=condition=ready pod/mysql-0 --timeout=300s"
         echo ""
-        
         echo "3. Deploy EntryTracker:"
         echo "   kubectl apply -f k8s/entrytracker-configmap.yaml"
         echo "   kubectl apply -f k8s/entrytracker-deployment.yaml"
