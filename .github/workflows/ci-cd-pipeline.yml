@@ -138,3 +138,4 @@ jobs:
         echo "4. Get the NodePort:"
         echo "   kubectl get service entrytracker-service"
         echo "   # Access via NodePort in Killercoda browser"
+
