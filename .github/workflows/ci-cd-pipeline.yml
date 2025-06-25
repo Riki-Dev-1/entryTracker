@@ -28,7 +28,10 @@ jobs:
         pip install pytest
 
     - name: Run unit tests with pytest
-      run: pytest tests/
+      run: |
+        export PYTHONPATH=.
+        pytest tests/
+
 
     - name: Generate image tag
       id: generate-tag
